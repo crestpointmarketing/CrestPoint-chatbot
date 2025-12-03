@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrestPoint Chat Widget</title>
+    
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --cp-accent: #cbfb45;
+            --cp-text: #111;
+            --cp-muted: #f5f7fa;
+            --cp-border: #e7ecf2;
+            --cp-radius: 18px;
+            --cp-shadow: 0 18px 40px rgba(0,0,0,.14);
+            --cp-font: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            --cp-size: 1rem;
+        }
+        
+        #cp-chat-root * {
+            box-sizing: border-box;
+        }
+
+        /* Launcher Button */
+        .cp-launcher {
+            position: fixed;
+            right: 22px;
+            bottom: 22px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--cp-accent);
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(0,0,0,.06);
+            box-shadow: var(--cp-shadow);
+            cursor: pointer;
+            z-index: 9999;
+            transition: transform 0.2s ease;
+        }
+        
+        .cp-launcher:hover {
+            transform: scale(1.05);
+        }
+        
+        .cp-launcher svg {
+            width: 30px;
+            height: 30px;
+            color: #1a1a1a;
+            opacity: .95;
+        }
+
+        /* Chat Panel */
+        .cp-panel {
+            position: fixed;
+            right: 22px;
+            bottom: 92px;
+            width: 390px;
+            max-width: calc(100vw - 44px);
+            background: #fff;
+            border: 1px solid var(--cp-border);
+            border-radius: var(--cp-radius);
+            box-shadow: var(--cp-shadow);
+            overflow: hidden;
+            display: none;
+            z-index: 9999;
+            font-family: var(--cp-font);
+            font-size: var(--cp-size);
+            color: var(--cp-text);
+            max-height: 600px;
+        }
+
+        /* Header */
+        .cp-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: #fff;
+            border-bottom: 1px solid var(--cp-border);
+            position: relative;
+        }
+        
+        .cp-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: var(--cp-accent);
+            display: grid;
+            place-items: center;
+            font-weight: 600;
+            color: #1a1a1a;
+            font-size: 16px;
+        }
+        
+        .cp-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            flex: 1;
+        }
+        
+        .cp-close {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: transparent;
+            border: none;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            color: #718096;
+            transition: all 0.2s;
+        }
+        
+        .cp-close:hover {
+            background: var(--cp-muted);
+            color: var(--cp-text);
+        }
+        
+        .cp-close svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Message Area */
+        .cp-body {
+            background: var(--cp-muted);
+            height: 280px;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .cp-body.with-lead {
+            height: 180px;
+        }
+
+        .cp-msg {
+            max-width: 86%;
+            line-height: 1.5;
+            padding: 9px 12px;
+            margin: 5px 0;
+            border-radius: 12px;
+            word-wrap: break-word;
+            font-size: 0.9rem;
+        }
+        
+        .cp-msg.user {
+            margin-left: auto;
+            background: #eef3ff;
+            border: 1px solid #dbe5ff;
+            border-top-right-radius: 4px;
+            text-align: right;
+        }
+        
+        .cp-msg.bot {
+            background: #fff;
+            border: 1px solid var(--cp-border);
+            border-top-left-radius: 4px;
+        }
+        
+        .cp-msg.typing {
+            font-style: italic;
+            opacity: 0.7;
+        }
+
+        /* Lead Capture Form */
+        .cp-lead {
+            background: #fff;
+            border-top: 1px solid var(--cp-border);
+            padding: 12px 16px;
+            display: none;
+        }
+        
+        .cp-lead-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: var(--cp-text);
+        }
+        
+        .cp-lead-grid {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .cp-lead-note {
+            font-size: 0.75rem;
+            color: #718096;
+            margin-top: 8px;
+            text-align: center;
+            line-height: 1.3;
+        }
+        
+        .cp-lead-note.error {
+            color: #e53e3e;
+        }
+
+        /* Footer Input Area */
+        .cp-footer {
+            display: flex;
+            gap: 8px;
+            padding: 10px;
+            background: #fff;
+            border-top: 1px solid var(--cp-border);
+        }
+        
+        .cp-input {
+            flex: 1;
+            font: inherit;
+            background: #fff;
+            border: 1px solid var(--cp-border);
+            border-radius: 10px;
+            padding: 9px 12px;
+            outline: none;
+            font-size: 0.9rem;
+        }
+        
+        .cp-input:focus {
+            border-color: var(--cp-accent);
+        }
+        
+        .cp-send {
+            font: 600 0.9rem/1 var(--cp-font);
+            color: #1a1a1a;
+            background: var(--cp-accent);
+            border: 1px solid rgba(0,0,0,.06);
+            border-radius: 10px;
+            padding: 9px 14px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        
+        .cp-send:hover {
+            background: #b8e03d;
+        }
+        
+        .cp-send:active {
+            transform: scale(0.95);
+        }
+        
+        .cp-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 480px) {
+            .cp-panel {
+                width: 100%;
+                right: 0;
+                bottom: 0;
+                border-radius: 16px 16px 0 0;
+                max-height: 85vh;
+            }
+            
+            .cp-body {
+                height: calc(85vh - 250px);
+            }
+            
+            .cp-body.with-lead {
+                height: calc(85vh - 380px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Chat Widget Root -->
+    <div id="cp-chat-root"></div>
+
+    <script>
+    (function() {
+        // Configuration
+        const CHAT_ENDPOINT = "https://wisewavesllc.zeabur.app/webhook/chat";
+        const LEAD_ENDPOINT = "https://wisewavesllc.zeabur.app/webhook/chat/lead";
+
+        // Get the root element
+        const root = document.getElementById("cp-chat-root");
+
+        // Create chat panel
+        const panel = document.createElement("div");
+        panel.className = "cp-panel";
+        panel.innerHTML = `
+            <div class="cp-header">
+                <div class="cp-avatar">🤖</div>
+                <div class="cp-title">CrestPoint Support</div>
+                <button id="cp-close" class="cp-close" title="Close chat">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="cp-body" id="cp-body"></div>
+
+            <div class="cp-lead" id="cp-lead">
+                <div class="cp-lead-title">👋 Before we start, may I know your name and email?</div>
+                <div class="cp-lead-grid">
+                    <input id="cp-name" class="cp-input" placeholder="Your name *" autocomplete="name" />
+                    <input id="cp-email" class="cp-input" placeholder="Your email *" type="email" autocomplete="email" />
+                </div>
+                <button id="cp-lead-save" class="cp-send" style="width:100%;">Continue Chat</button>
+                <div id="cp-lead-note" class="cp-lead-note">We'll only use this to follow up on your question.</div>
+            </div>
+
+            <div class="cp-footer">
+                <input id="cp-input" class="cp-input" placeholder="Type your message..." />
+                <button id="cp-send" class="cp-send">Send</button>
+            </div>
+        `;
+
+        // Create launcher button
+        const launcher = document.createElement("button");
+        launcher.className = "cp-launcher";
+        launcher.setAttribute("aria-label", "Open chat");
+        launcher.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c4.97 0 9 3.58 9 8s-4.03 8-9 8a10.9 10.9 0 0 1-3.6-.6L4 21l1.8-3.6A9.6 9.6 0 0 1 3 11c0-4.42 4.03-8 9-8z"/></svg>`;
+
+        // Append elements to root
+        root.append(panel, launcher);
+
+        // Get references to elements
+        const body = panel.querySelector("#cp-body");
+        const input = panel.querySelector("#cp-input");
+        const send = panel.querySelector("#cp-send");
+        const leadUI = panel.querySelector("#cp-lead");
+        const nameEl = panel.querySelector("#cp-name");
+        const mailEl = panel.querySelector("#cp-email");
+        const saveBt = panel.querySelector("#cp-lead-save");
+        const noteEl = panel.querySelector("#cp-lead-note");
+        const closeBtn = panel.querySelector("#cp-close");
+
+        // Storage keys
+        const SID_KEY = "cp_chat_sid";
+        const LEAD_NAME = "cp_lead_name";
+        const LEAD_MAIL = "cp_lead_email";
+
+        // Initialize session
+        let sessionId = localStorage.getItem(SID_KEY) || Math.random().toString(36).slice(2);
+        localStorage.setItem(SID_KEY, sessionId);
+
+        // Initialize lead data
+        let lead = {
+            name: localStorage.getItem(LEAD_NAME) || "",
+            email: localStorage.getItem(LEAD_MAIL) || ""
+        };
+        let leadCaptured = !!(lead.name && lead.email);
+        let pendingMessage = "";
+
+        // Toggle chat panel
+        function toggle() {
+            const open = panel.style.display === "block";
+            panel.style.display = open ? "none" : "block";
+            if (!open) {
+                if (!leadCaptured) {
+                    showLeadForm();
+                } else {
+                    input.focus();
+                }
+            }
+        }
+        
+        launcher.addEventListener("click", toggle);
+        closeBtn.addEventListener("click", toggle);
+
+        // Lead form management
+        function showLeadForm() {
+            leadUI.style.display = "block";
+            body.classList.add("with-lead");
+            nameEl.focus();
+        }
+        
+        function hideLeadForm() {
+            leadUI.style.display = "none";
+            body.classList.remove("with-lead");
+        }
+
+        // Message management
+        function addMsg(text, who = "bot") {
+            const typing = body.querySelector(".cp-msg.typing");
+            if (typing) typing.remove();
+            
+            const div = document.createElement("div");
+            div.className = `cp-msg ${who}`;
+            div.textContent = text;
+            body.appendChild(div);
+            body.scrollTop = body.scrollHeight;
+        }
+        
+        function showTyping() {
+            const div = document.createElement("div");
+            div.className = "cp-msg bot typing";
+            div.textContent = "Typing...";
+            body.appendChild(div);
+            body.scrollTop = body.scrollHeight;
+        }
+
+        // Send lead data to webhook
+        async function sendLeadToWebhook(name, email) {
+            if (!LEAD_ENDPOINT) return;
+            try {
+                const form = new URLSearchParams();
+                form.set("name", name);
+                form.set("email", email);
+                form.set("source", "chatbot");
+                form.set("sessionId", sessionId);
+                form.set("timestamp", new Date().toISOString());
+                
+                await fetch(LEAD_ENDPOINT, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+                    },
+                    body: form
+                });
+            } catch (e) {
+                console.warn("Lead webhook failed (non-fatal)", e);
+            }
+        }
+
+        // Handle lead form submission
+        saveBt.addEventListener("click", async () => {
+            const name = (nameEl.value || "").trim();
+            const email = (mailEl.value || "").trim();
+            
+            if (!name || !email) {
+                noteEl.textContent = "⚠️ Please enter both name and email.";
+                noteEl.className = "cp-lead-note error";
+                return;
+            }
+            
+            if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+                noteEl.textContent = "⚠️ Please enter a valid email.";
+                noteEl.className = "cp-lead-note error";
+                return;
+            }
+
+            saveBt.disabled = true;
+            saveBt.textContent = "Saving...";
+            
+            lead = { name, email };
+            localStorage.setItem(LEAD_NAME, name);
+            localStorage.setItem(LEAD_MAIL, email);
+            leadCaptured = true;
+            
+            await sendLeadToWebhook(name, email);
+            
+            hideLeadForm();
+            saveBt.disabled = false;
+            saveBt.textContent = "Continue Chat";
+
+            if (pendingMessage) {
+                const msg = pendingMessage;
+                pendingMessage = "";
+                await sendToChat(msg);
+            } else {
+                input.focus();
+                addMsg(`Thanks ${name}! How can I help you today?`);
+            }
+        });
+
+        // Send message
+        async function sendMsg() {
+            const text = (input.value || "").trim();
+            if (!text) return;
+            
+            if (!leadCaptured) {
+                pendingMessage = text;
+                input.value = "";
+                addMsg(text, "user");
+                showLeadForm();
+                nameEl.value = lead.name || "";
+                mailEl.value = lead.email || "";
+                noteEl.textContent = "Please provide your contact info to continue.";
+                noteEl.className = "cp-lead-note";
+                return;
+            }
+            
+            await sendToChat(text);
+        }
+
+        // Send message to chat API
+        async function sendToChat(text) {
+            addMsg(text, "user");
+            input.value = "";
+            send.disabled = true;
+            showTyping();
+            
+            try {
+                const form = new URLSearchParams();
+                form.set("sessionId", sessionId);
+                form.set("message", text);
+                if (lead.name) form.set("name", lead.name);
+                if (lead.email) form.set("email", lead.email);
+                
+                const res = await fetch(CHAT_ENDPOINT, {
+                    method: "POST",
+                    body: form
+                });
+                
+                if (!res.ok) throw new Error("HTTP " + res.status);
+                
+                const data = await res.json();
+                addMsg(data.reply || "Sorry, I didn't catch that.");
+            } catch (err) {
+                addMsg("Connection error. Please try again.");
+                console.error("Chat error:", err);
+            } finally {
+                send.disabled = false;
+                input.focus();
+            }
+        }
+
+        // Event listeners
+        send.addEventListener("click", sendMsg);
+        input.addEventListener("keydown", e => {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMsg();
+            }
+        });
+        nameEl.addEventListener("keydown", e => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                mailEl.focus();
+            }
+        });
+        mailEl.addEventListener("keydown", e => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                saveBt.click();
+            }
+        });
+
+        // Initial welcome message
+        if (leadCaptured) {
+            addMsg(`Hi ${lead.name}! I'm CrestPoint Assistant. How can I help you today?`);
+        } else {
+            addMsg("Hi! I'm CrestPoint Assistant. How can I help you today?");
+        }
+    })();
+    </script>
+</body>
+</html>
